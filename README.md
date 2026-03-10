@@ -80,9 +80,9 @@ Claude 用 fetcher-mcp 重新获取
 
 - Node.js 18+
 - Claude Code 已安装（`~/.claude/settings.json` 存在）
-- npx 可用（随 Node.js 自带）
 
-fetcher-mcp 通过 `npx -y fetcher-mcp` 按需运行，无需全局安装。
+安装脚本会自动全局安装 fetcher-mcp（`npm install -g fetcher-mcp`）。
+使用全局安装而非 npx 是因为 Claude Code 启动 MCP server 时，npx 的下载延迟可能导致初始化超时。
 
 ## FAQ
 
@@ -90,7 +90,7 @@ fetcher-mcp 通过 `npx -y fetcher-mcp` 按需运行，无需全局安装。
 A: 不会。Hook 只在检测到 SPA 特征时输出警告，正常页面静默通过。
 
 **Q: fetcher-mcp 首次运行慢？**
-A: 首次 npx 需要下载包，后续使用缓存。如有代理，确保 `HTTP_PROXY` 环境变量已设。
+A: 安装脚本已改为全局安装，避免了 npx 每次下载的延迟。如 Playwright 浏览器未安装，运行 `npx playwright install chromium`。
 
 **Q: 如何验证生效？**
 A: 让 Claude Code 用 WebFetch 访问任意 React/Next.js 页面，观察 `[SPA DETECTED]` 警告。

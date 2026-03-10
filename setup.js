@@ -5,11 +5,12 @@
  * and fall back to fetcher-mcp for JS-rendered content extraction.
  *
  * What it does:
- *   1. Copies webfetch-spa-detector.js hook to ~/.claude/hooks/
- *   2. Adds fetcher-mcp MCP server to ~/.claude/settings.json
- *   3. Registers PostToolUse hook for WebFetch in settings.json
- *   4. Adds WebFetch SPA Fallback rule to ~/.claude/rules/common/
- *   5. Appends fallback instructions to ~/.claude/CLAUDE.md
+ *   1. Installs fetcher-mcp globally via npm (if not already installed)
+ *   2. Copies webfetch-spa-detector.js hook to ~/.claude/hooks/
+ *   3. Adds fetcher-mcp MCP server to ~/.claude/settings.json
+ *   4. Registers PostToolUse hook for WebFetch in settings.json
+ *   5. Adds WebFetch SPA Fallback rule to ~/.claude/rules/common/
+ *   6. Appends fallback instructions to ~/.claude/CLAUDE.md
  *
  * Usage:
  *   node setup.js           # Install
@@ -126,11 +127,39 @@ function readText(filePath) {
 
 // --- Install ---
 
+function commandExists(cmd) {
+  try {
+    const { execSync } = require("child_process");
+    execSync(process.platform === "win32" ? `where ${cmd}` : `which ${cmd}`, {
+      stdio: "pipe",
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function install() {
   log("Installing WebFetch SPA Fallback...\n");
 
+  // 0. Install fetcher-mcp globally if needed
+  log("0. fetcher-mcp package:");
+  if (commandExists("fetcher-mcp")) {
+    logSkip("fetcher-mcp already installed globally");
+  } else {
+    logAdd("Installing fetcher-mcp globally via npm...");
+    try {
+      const { execSync } = require("child_process");
+      execSync("npm install -g fetcher-mcp", { stdio: "inherit" });
+      logOk("fetcher-mcp installed globally");
+    } catch (e) {
+      logError("Failed to install fetcher-mcp. Run manually: npm install -g fetcher-mcp");
+      logError(e.message);
+    }
+  }
+
   // 1. Copy hook script
-  log("1. Hook script:");
+  log("\n1. Hook script:");
   ensureDir(HOOKS_DIR);
   if (!fs.existsSync(HOOK_SOURCE)) {
     logError(`Source file not found: ${HOOK_SOURCE}`);
@@ -153,8 +182,8 @@ function install() {
     logSkip("fetcher-mcp MCP server already configured");
   } else {
     settings.mcpServers.fetcher = {
-      command: "npx",
-      args: ["-y", "fetcher-mcp"],
+      command: "fetcher-mcp",
+      args: [],
     };
     logAdd("fetcher-mcp MCP server");
   }
@@ -339,6 +368,7 @@ function remove() {
 
   log("\n---");
   log("Removal complete. Restart Claude Code to apply changes.");
+  log("To also uninstall the fetcher-mcp package: npm uninstall -g fetcher-mcp");
 }
 
 // --- Main ---

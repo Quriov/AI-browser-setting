@@ -121,6 +121,31 @@ function detectSpa(content) {
     indicators.push("nextjs_json_only");
   }
 
+  // 8. AI-summarized SPA indicators
+  // WebFetch passes content through an AI model before returning.
+  // When the original page is a SPA, the AI summary often contains
+  // telltale phrases about inability to extract content.
+  const aiSpaPatterns = [
+    /cannot extract|unable to extract|could not extract/i,
+    /frontend configuration|front-end configuration/i,
+    /javascript.{0,20}(only|required|needed|dependent|render)/i,
+    /primarily.{0,20}script tags/i,
+    /does not contain.{0,30}(documentation|content|text|article)/i,
+    /single.page.application|SPA/i,
+    /requires?.{0,10}javascript.{0,10}to.{0,10}render/i,
+    /no.{0,15}(meaningful|readable|visible|actual).{0,10}(content|text)/i,
+    /client.side.render/i,
+    /webpack|bundle\.js|chunk/i,
+    /page.{0,10}(appears?|seems?).{0,10}(to be)?.{0,10}(a )?(dynamic|javascript|react|vue|angular|next\.?js)/i,
+    /empty.{0,10}(html|page|body|document)/i,
+  ];
+  for (const pattern of aiSpaPatterns) {
+    if (pattern.test(content)) {
+      indicators.push("ai_detected_spa_content");
+      break;
+    }
+  }
+
   return indicators;
 }
 
@@ -147,6 +172,7 @@ function main() {
     "js_required_message",
     "empty_spa_container",
     "empty_response",
+    "ai_detected_spa_content",
   ];
   const hasStrongIndicator = indicators.some((i) =>
     strongIndicators.includes(i)
