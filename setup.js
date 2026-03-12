@@ -139,6 +139,31 @@ function commandExists(cmd) {
   }
 }
 
+function findFetcherMcpEntryPoint() {
+  // Find the absolute path to fetcher-mcp's entry point.
+  // Claude Code's subprocess may not have the same PATH as the user's shell,
+  // so we must use an absolute path in the MCP server config.
+  const { execSync } = require("child_process");
+  try {
+    const globalRoot = execSync("npm root -g", { encoding: "utf-8" }).trim();
+    const entryPoint = path.join(globalRoot, "fetcher-mcp", "build", "index.js");
+    if (fs.existsSync(entryPoint)) {
+      return entryPoint.replace(/\\/g, "/");
+    }
+  } catch {}
+
+  // Fallback: try to resolve from require
+  try {
+    const pkgDir = path.dirname(require.resolve("fetcher-mcp/package.json"));
+    const entryPoint = path.join(pkgDir, "build", "index.js");
+    if (fs.existsSync(entryPoint)) {
+      return entryPoint.replace(/\\/g, "/");
+    }
+  } catch {}
+
+  return null;
+}
+
 function install() {
   log("Installing WebFetch SPA Fallback...\n");
 
@@ -176,16 +201,30 @@ function install() {
     process.exit(1);
   }
 
-  // 2a. Add fetcher-mcp MCP server
+  // 2a. Add fetcher-mcp MCP server (using node + absolute path for reliability)
   if (!settings.mcpServers) settings.mcpServers = {};
-  if (settings.mcpServers.fetcher) {
-    logSkip("fetcher-mcp MCP server already configured");
-  } else {
+
+  const entryPoint = findFetcherMcpEntryPoint();
+  if (!entryPoint) {
+    logError("Cannot find fetcher-mcp entry point. Ensure npm install -g fetcher-mcp succeeded.");
+  }
+
+  // Always update the config to use absolute path (fixes PATH issues)
+  const needsUpdate =
+    !settings.mcpServers.fetcher ||
+    settings.mcpServers.fetcher.command !== "node" ||
+    !settings.mcpServers.fetcher.args ||
+    !settings.mcpServers.fetcher.args[0] ||
+    !settings.mcpServers.fetcher.args[0].includes("fetcher-mcp");
+
+  if (needsUpdate && entryPoint) {
     settings.mcpServers.fetcher = {
-      command: "fetcher-mcp",
-      args: [],
+      command: "node",
+      args: [entryPoint],
     };
-    logAdd("fetcher-mcp MCP server");
+    logAdd(`fetcher-mcp MCP server (node ${entryPoint})`);
+  } else if (!needsUpdate) {
+    logSkip("fetcher-mcp MCP server already configured with absolute path");
   }
 
   // 2b. Add PostToolUse hook
